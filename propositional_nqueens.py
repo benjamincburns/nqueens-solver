@@ -12,21 +12,19 @@ def propositional_nqueens(n):
     """Solves the problem of the nqueens thanks to constraint programming/z3 & a little trick"""
 
     queens = Function('queens', IntSort(), IntSort(), BoolSort())
-    x = Int('x')
-    y = Int('y')
 
     expressions = []
     s = Solver()
 
-    expressions.append(And(x >= 0, x < n))
-    expressions.append(And(y >= 0, y < n))
-
-    for val in xrange(n):
+    for row in xrange(n):
         # some column must be True for row `val`
-        expressions.append(queens(val, y) == True)
+        expressions.append(Or(*[queens(row, col) for col in xrange(n)]) == True)
 
+    for col in xrange(n):
         # some row must be True for column `val`
-        expressions.append(queens(x, val) == True)
+        expressions.append(Or(*[queens(row, col) for row in xrange(n)]) == True)
+
+
 
     for point1 in points(n):
         for point2 in points(n, point1[0] + 1, point1[1] + 1):
