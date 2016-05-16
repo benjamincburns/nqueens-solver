@@ -32,12 +32,15 @@ def propositional_nqueens(n):
             # no two queens may occupy the same row, column, or diagonal
             if are_same_row(point1, point2) or are_same_col(point1, point2) or are_diagonal(point1, point2):
                 expressions.append(Implies(queens(point1[0], point1[1]), Not(queens(point2[0], point2[1]))))
+                expressions.append(Implies(queens(point2[0], point2[1]), Not(queens(point1[0], point1[1]))))
 
             for point3 in points(n, point2[1] + 1, point2[1] + 1):
 
                 # no three queens may be colinear (fall on the same line of arbitrary angle)
                 if are_colinear(point1, point2, point3):
                     expressions.append(Implies(And(queens(point1[0], point1[1]), queens(point2[0], point2[1])), Not(queens(point3[0], point3[1]))))
+                    expressions.append(Implies(And(queens(point1[0], point1[1]), queens(point3[0], point3[1])), Not(queens(point2[0], point2[1]))))
+                    expressions.append(Implies(And(queens(point2[0], point2[1]), queens(point3[0], point3[1])), Not(queens(point1[0], point1[1]))))
 
 
     # ugly, but makes it easier to dump expressions to SMT
