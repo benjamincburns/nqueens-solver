@@ -13,20 +13,19 @@ def propositional_nqueens(n):
 
     queens = Function('queens', IntSort(), IntSort(), BoolSort())
 
-    expressions = []
     s = Solver()
 
     for row in xrange(n):
         # some column must be True for row `val`
-        expressions.append(Or(*[queens(row, col) for col in xrange(n)]) == True)
+        s.add(Or(*[queens(row, col) for col in xrange(n)]) == True)
         for next_row in xrange(row+1, n):
-            expressions.extend(Implies(queens(row, col), Not(queens(next_row, col))) for col in xrange(n))
+            s.add(*[Implies(queens(row, col), Not(queens(next_row, col))) for col in xrange(n)])
 
     for col in xrange(n):
         # some row must be True for column `val`
-        expressions.append(Or(*[queens(row, col) for row in xrange(n)]) == True)
+        s.add(Or(*[queens(row, col) for row in xrange(n)]) == True)
         for next_col in xrange(col+1, n):
-            expressions.extend(Implies(queens(row, col), Not(queens(row, next_col))) for row in xrange(n))
+            s.add(*[Implies(queens(row, col), Not(queens(row, next_col))) for row in xrange(n)])
 
 
 
@@ -37,8 +36,7 @@ def propositional_nqueens(n):
 
             # no two queens may occupy the same row, column, or diagonal
             if are_diagonal(point1, point2):
-                #print '%s -> -%s' % (point1, point2)
-                expressions.append(Implies(queens(*point1), Not(queens(*point2))))
+                s.add(Implies(queens(*point1), Not(queens(*point2))))
 
             for point3 in points(n):
                 if point3 == point1 or point3 == point2:
@@ -46,12 +44,8 @@ def propositional_nqueens(n):
 
                 # no three queens may be colinear (fall on the same line of arbitrary angle)
                 if are_colinear(point1, point2, point3):
-                    expressions.append(Implies(And(queens(point1[0], point1[1]), queens(point2[0], point2[1])), Not(queens(point3[0], point3[1]))))
+                    s.add(Implies(And(queens(point1[0], point1[1]), queens(point2[0], point2[1])), Not(queens(point3[0], point3[1]))))
 
-
-    # ugly, but makes it easier to dump expressions to SMT
-    for expression in expressions:
-        s.add(expression)
 
     if s.check() == unsat:
         # dat error checking

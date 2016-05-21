@@ -102,7 +102,7 @@ def nqueens_constraint_programming_opti(n):
         row_for_queen.append(Int(name))
 
     expressions = []
-    s = Solver()
+    s = SolverFor('QF_NIA')
 
     rules = []
     #expressions.append(row_for_queen[-1] > n/2)
@@ -121,20 +121,21 @@ def nqueens_constraint_programming_opti(n):
             expressions.append(rise == row_for_queen[j] - row_for_queen[i])
             expressions.append(abs_z3(rise) != abs(i-j))
 
-    #for i in xrange(n - 1):
-    #    for j in xrange(i + 1, n):
-    #        rise1 = Int('rise_%d_%d' % (j,i))
-    #        run1 = j - i
+    for i in xrange(n - 1):
+        for j in xrange(i + 1, n):
+            rise1 = Int('rise_%d_%d' % (j,i))
+            run1 = j - i
 
-    #        for k in xrange(j+1, n):
+            for k in xrange(j+1, n):
 
-    #            rise2 = Int('rise_%d_%d' % (k,j))
-    #            run2 = k - j
+                rise2 = Int('rise_%d_%d' % (k,j))
+                run2 = k - j
 
-    #            expressions.append(run1 * rise2 != run2 * rise1)
+                expressions.append(run1 * rise2 != run2 * rise1)
 
     for expression in expressions:
         s.add(expression)
+
 
     if s.check() == unsat:
        raise Exception('Unsat.')
@@ -167,7 +168,6 @@ def main(argc, argv):
         q = nqueens_constraint_programming_opti(n)
         #q = nqueens(n)
     except:
-        #return 0
         print('Threw after %f seconds' % (time()-t1))
         raise
 
