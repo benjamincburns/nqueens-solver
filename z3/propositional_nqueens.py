@@ -8,55 +8,174 @@ from checker import Checker
 import sys
 
 
-def propositional_nqueens(n):
-    """Solves the problem of the nqueens thanks to constraint programming/z3 & a little trick"""
+def propositional_nqueens(n, print_lines = False, solve_problem = True):
 
-    queens = Function('queens', IntSort(), IntSort(), BoolSort())
+    if solve_problem:
+        s = SolverFor('QF_BV')
+        queens_by_point = {}
+        queens_by_name = {}
 
-    s = Solver()
+    by_rows = [[] for x in xrange(n)]
+    by_cols = [[] for x in xrange(n)]
+
+    if print_lines:
+        print '(set-logic QF_BV)'
+        print ';declarations in the form queen_col_row - if true, queen occupies space on board at col, row'
+
+    for point in points(n):
+        name = 'queen_%d_%d' % point
+
+        by_rows[point[1]].append(name)
+        by_cols[point[0]].append(name)
+
+        if solve_problem:
+            queen = Bool(name)
+            queens_by_point[point] = queen
+            queens_by_name[name] = queen
+
+        if print_lines:
+            print '(declare-const %s Bool)' % name
+
+
+    if print_lines:
+        print
+        print ';at least one value in each row must be true'
+
+    for row_of_names in by_rows:
+        if print_lines:
+            print '(assert (or %s))' % ' '.join(row_of_names)
+
+        if solve_problem:
+            s.add(Or(*[queens_by_name[name] for name in row_of_names]))
+        
+    if print_lines:
+        print
+        print ';at least one value in each column must be true'
+
+    for col_of_names in by_cols:
+        if print_lines:
+            print '(assert (or %s))' % ' '.join(col_of_names)
+
+        if solve_problem:
+            s.add(Or(*[queens_by_name[name] for name in col_of_names]))
+
+    if print_lines:
+        print
+        print ';only one value in each row may be true'
 
     for row in xrange(n):
-        # some column must be True for row `val`
-        s.add(Or(*[queens(row, col) for col in xrange(n)]) == True)
-        for next_row in xrange(row+1, n):
-            s.add(*[Implies(queens(row, col), Not(queens(next_row, col))) for col in xrange(n)])
+        for col in xrange(n):
+            antecedent_name = by_rows[row][col]
+            consequent_names = [by_rows[row][a] for a in xrange(n) if a != col]
+
+            if solve_problem:
+                s.add(Implies(queens_by_name[antecedent_name], And(*[Not(queens_by_name[a]) for a in consequent_names])))
+
+            if print_lines:
+                print '(assert (=> %s (not (and %s))))' % (antecedent_name, ' '.join('(not %s)' % a for a in consequent_names))
+
+    if print_lines:
+        print
+        print ';only one value in each column may be true'
 
     for col in xrange(n):
-        # some row must be True for column `val`
-        s.add(Or(*[queens(row, col) for row in xrange(n)]) == True)
-        for next_col in xrange(col+1, n):
-            s.add(*[Implies(queens(row, col), Not(queens(row, next_col))) for row in xrange(n)])
+        for row in xrange(n):
+            antecedent_name = by_cols[col][row]
+            consequent_names = [by_cols[col][a] for a in xrange(n) if a != row]
+
+            if solve_problem:
+                s.add(Implies(queens_by_name[antecedent_name], Not(And(*[queens_by_name[a] for a in consequent_names]))))
+
+            if print_lines:
+                print '(assert (=> %s (not (and %s))))' % (antecedent_name, ' '.join(consequent_names))
 
 
+    if print_lines:
+        print
+        print '; no two queens may fall on the same diagonal'
 
     for point1 in points(n):
         for point2 in points(n):
             if point1 == point2:
                 continue
 
-            # no two queens may occupy the same row, column, or diagonal
             if are_diagonal(point1, point2):
-                s.add(Implies(queens(*point1), Not(queens(*point2))))
+                if solve_problem:
+                    s.add(Implies(queens_by_point[point1], Not(queens_by_point[point2])))
 
-            for point3 in points(n):
-                if point3 == point1 or point3 == point2:
-                    continue
+                if print_lines:
+                    print '(assert (=> %s (not %s)))' % ('queen_%d_%d' % point1, 'queen_%d_%d' % point2)
 
-                # no three queens may be colinear (fall on the same line of arbitrary angle)
-                if are_colinear(point1, point2, point3):
-                    s.add(Implies(And(queens(point1[0], point1[1]), queens(point2[0], point2[1])), Not(queens(point3[0], point3[1]))))
+    if print_lines:
+        print
+        print '; no three queens may fall on the same line'
+
+    for point in points(n):
+        for slope in points(n, 1, 1):
+
+            if slope == (1,1):
+                continue
+
+            lines = [ ]
+            line = points_along_line(point, slope[0], slope[1], n)
+
+            if len(line) >= 2:
+                lines.append(line)
+
+            line = points_along_line(point, -slope[0], slope[1], n)
+
+            if len(line) >= 2:
+                lines.append(line)
 
 
-    if s.check() == unsat:
-        # dat error checking
-        raise Exception('Unsat.')
+            if len(lines) == 0:
+                continue
 
-    m = s.model()
+            for points1 in lines:
+                for point1 in points1:
+                    if print_lines:
+                        print '(assert (=> (and %s %s) (and %s)))' % ('queen_%d_%d' % point,
+                                'queen_%d_%d' % point1,
+                                ' '.join('(not queen_%d_%d)' % a for a in points1 if a != point1))
+                    if solve_problem:
+                        s.add(Implies(And(queens_by_point[point], queens_by_point[point1]), And(*[Not(queens_by_point[a]) for a in points1 if a != point1])))
 
-    # incomprehensible list comprehensions FTW
-    results = sorted([(a[0].as_long(),a[1].as_long()) for a in m[queens].as_list() if hasattr(a, '__getitem__') and is_true(a[2])])
 
-    return results
+    if print_lines:
+        print '(check-sat)'
+        print '(get-model)'
+
+    if solve_problem:
+        if s.check() == unsat:
+            # dat error checking
+            raise Exception('Unsat.')
+
+        m = s.model()
+
+
+        results = []
+        for point in queens_by_point:
+            if is_true(m[queens_by_point[point]]):
+                results.append(point)
+
+        results.sort()
+
+        return results
+
+def points_along_line(point, rise, run, n):
+    points = []
+    start_point = point
+
+    #while 0 <= (start_point[0] - run) < n and 0 <= (start_point[1] - rise) < n:
+        #start_point = (start_point[0] - run, start_point[1] - rise)
+        #points.append(start_point)
+
+    start_point = point
+    while 0 <= (start_point[0] + run) < n and 0 <= (start_point[1] + rise) < n:
+        start_point = (start_point[0] + run, start_point[1] + rise)
+        points.append(start_point)
+
+    return points
 
 def points(n, x_start = 0, y_start = 0):
     for x in xrange(x_start, n):
@@ -90,34 +209,41 @@ def display_solutions(s):
         print '# %s' % ' '.join(row)
 
 def main(argc, argv):
-    if argc != 2:
+    if not (1 < argc <= 3):
         print 'Usage: nqueens <n>'
         return 1
 
     n = int(argv[1], 10)
+
+    if (len(argv) == 3):
+        print_lines = True
+    else:
+        print_lines = False
     t1 = time()
     try:
-        q = propositional_nqueens(n)
+        q = propositional_nqueens(n, print_lines=print_lines, solve_problem = not print_lines)
     except:
         print('Threw after %f seconds' % (time()-t1))
         raise
 
     t2 = time()
 
-    
-    matrix = [[0] * n for i in xrange(n)]
-
-    for x,y in q:
-        matrix[x][y] = 1
-
-    checker = Checker(matrix=matrix)
-    if checker.test_all(False) == False:
-        checker.print_error_matrix()
+    if print_lines:
+            print('; generated in %f seconds' % (t2 - t1))
     else:
-        display_solutions(q)
-        print('# calculated in %f seconds' % (t2 - t1))
-        print("print '%s'" % n)
-        print("print '%s'" % ' '.join(str(column + 1) for row, column in q))
+        matrix = [[0] * n for i in xrange(n)]
+
+        for x,y in q:
+            matrix[x][y] = 1
+
+        checker = Checker(matrix=matrix)
+        if checker.test_all(False) == False:
+            checker.print_error_matrix()
+        else:
+            display_solutions(q)
+            print('# calculated in %f seconds' % (t2 - t1))
+            print("print '%s'" % n)
+            print("print '%s'" % ' '.join(str(column + 1) for row, column in q))
 
     return 0
 
