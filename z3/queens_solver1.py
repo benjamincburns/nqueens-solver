@@ -146,7 +146,6 @@ def nqueens_constraint_programming_opti(n):
     rows = [m[Int('row_for_queen_%d' % i)].as_long() for i in xrange(n)]
     cols = range(n)
     model = sorted(zip(rows,cols))
-    print model
     return model
 
 def display_solutions(s):
