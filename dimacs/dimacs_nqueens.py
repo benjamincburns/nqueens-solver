@@ -115,17 +115,6 @@ def propositional_nqueens(n):
     print('# defined %d rules in %f seconds' % (rules, t2 - t1))
 
     return
-    with open('/media/rust/%d.cnf' % n, 'w') as output:
-        with open('comments.cnf', 'r') as comments:
-            for line in comments:
-                output.write(line)
-        with open('problem.cnf', 'r') as problem:
-            for line in problem:
-                output.write(line)
-        with open('clauses.cnf', 'r') as clauses:
-            for line in clauses:
-                output.write(line)
-
 
 def points_along_line(point, rise, run, n):
     points = []
