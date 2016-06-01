@@ -2,7 +2,11 @@
 # -*- coding: utf-8 -*-
 
 from time import time
+from fractions import gcd
+from fractions import Fraction
 import sys
+
+epsilon = sys.float_info.epsilon * 5
 
 def clause(f, *args):
     f.write(' '.join(str(a) for a in sorted(args)))
@@ -16,6 +20,7 @@ def propositional_nqueens(n):
     queens_by_point = {}
     points_by_name = {}
     ids_by_name = {}
+    ids_by_point = {}
 
     by_rows = [[] for x in xrange(n)]
     by_cols = [[] for x in xrange(n)]
@@ -31,6 +36,7 @@ def propositional_nqueens(n):
 
                     queens.append(name)
                     ids_by_name[name] = len(queens)
+                    ids_by_point[point] = len(queens)
                     queens_by_point[point] = name
                     points_by_name[name] = point
                     comments.write('c %d %s\n' % (len(queens), name))
@@ -70,38 +76,45 @@ def propositional_nqueens(n):
                             rules += 1
                             clause(clauses, *(-ids_by_name[queens_by_point[point1]], -ids_by_name[queens_by_point[point2]]))
 
-                for point in points(n):
-                    for slope in points(n, 1, 1):
+                for x1 in xrange(n):
+                    for x2 in xrange(x1 + 1, n):
+                        run = x2 - x1
 
-                        if slope == (1,1):
-                            continue
+                        for y1 in xrange(n):
+                            for y2 in xrange(n):
+                                if y1 == y2:
+                                    continue
 
-                        lines = []
-                        line = points_along_line(point, slope[0], slope[1], n)
+                                rise = y2 - y1
 
-                        if len(line) >= 2:
-                            lines.append(line)
+                                #if point collision or if inspecting diagonal, continue
+                                if run == abs(rise):
+                                    continue
 
-                        line = points_along_line(point, -slope[0], slope[1], n)
+                                step = run / gcd(rise, run)
 
-                        if len(line) >= 2:
-                            lines.append(line)
+                                #for x3 in xrange(x2 + 1, n):
+                                for x3 in xrange(x2 + step, n, step):
 
+                                    y3 = y2 + (float(x3 - x2) * rise)/run
 
-                        if len(lines) == 0:
-                            continue
+                                    iy3 = int(round(y3))
 
-                        for points1 in lines:
-                            for point1 in points1:
-                                for point2 in points1:
-                                    if point2 != point1:
-                                        rules += 1
-                                        clause(clauses, *(-ids_by_name[queens_by_point[point]], -ids_by_name[queens_by_point[point1]], -ids_by_name[queens_by_point[point2]]))
-                problem.write('p cnf %d %d' % (len(queens), rules))
+                                    if abs(iy3 - y3) > epsilon:
+                                        continue
+
+                                    if n <= iy3 or iy3 < 0:
+                                        continue
+
+                                    rules += 1
+                                    clause(clauses, -ids_by_point[(x1, y1)], -ids_by_point[(x2, y2)], -ids_by_point[(x3, iy3)])
+
+                problem.write('p cnf %d %d\n' % (len(queens), rules))
 
     t2 = time()
     print('# defined %d rules in %f seconds' % (rules, t2 - t1))
 
+    return
     with open('/media/rust/%d.cnf' % n, 'w') as output:
         with open('comments.cnf', 'r') as comments:
             for line in comments:
