@@ -87,13 +87,11 @@ def propositional_nqueens(n):
 
                                 rise = y2 - y1
 
-                                #if point collision or if inspecting diagonal, continue
                                 if run == abs(rise):
                                     continue
 
                                 step = run / gcd(rise, run)
 
-                                #for x3 in xrange(x2 + 1, n):
                                 for x3 in xrange(x2 + step, n, step):
 
                                     y3 = y2 + (float(x3 - x2) * rise)/run
