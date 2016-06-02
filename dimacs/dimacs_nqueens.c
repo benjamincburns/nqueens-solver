@@ -188,6 +188,7 @@ unsigned int point_to_id(const unsigned int n, const unsigned int x, const unsig
     return y * n + x + 1;
 }
 
+// stolen from https://en.wikipedia.org/wiki/Binary_GCD_algorithm#Iterative_version_in_C
 unsigned int gcd(unsigned int u, unsigned int v) {
     int shift;
 
